@@ -5,7 +5,7 @@
 
 # change 'tests => 1' to 'tests => last_test_to_print';
 
-use Test::More tests => 39 ;
+use Test::More tests => 40 ;
 BEGIN { 
 	use_ok('Google::OAuth') ;
 	use_ok('Google::OAuth::Install') ;
@@ -21,6 +21,11 @@ BEGIN {
 
 # Insert your test code below, the Test::More module is use()ed here so read
 # its man page ( perldoc Test::More ) for help writing this test script.
+
+sub linkcompare {
+	my @links = map { join '', sort split //, $_ } @_ ;
+	return $links[0] eq $links[1] ;
+	}
 
 my @test ;
 push @test, split /\n/, <<'eof' ;
@@ -90,6 +95,7 @@ my $item = {
              } ;
 
 my $t ;
+my $ok ;
 
 is( Google::OAuth->dsn->table, 'googletokens', 'DSN name' ) ;
 is( ref Google::OAuth->dsn->db, 'NoSQL::PL2SQL::DBI::Null', 'DSN source' ) ;
@@ -97,12 +103,12 @@ is( ref Google::OAuth->dsn->db, 'NoSQL::PL2SQL::DBI::Null', 'DSN source' ) ;
 $t = Google::OAuth::Client->new->scope(
                 'calendar.readonly' 
 		)->token_request ;
-is( $t, $test[0], 'Default credentials' ) ;
+ok( linkcompare( $t, $test[0] ), 'Default credentials' ) ;
 
 $t = Google::OAuth::Client->new->scope(
 		'm8.feeds', 'calendar', 'calendar.readonly', 'drive.readonly', 
 		)->token_request ;
-is( $t, $test[1], 'Expanded scope' ) ;
+ok( linkcompare( $t, $test[1] ), 'Expanded scope' ) ;
 
 
 my @credentials = qw(
@@ -117,14 +123,14 @@ is( Google::OAuth->setclient( @credentials ), undef, 'setclient' ) ;
 $t = Google::OAuth::Client->new->scope(
                 'calendar.readonly' 
 		)->token_request ;
-is( $t, $test[2], 'Modified credentials' ) ;
+ok( linkcompare( $t, $test[2] ), 'Modified credentials' ) ;
 
 $t = Google::OAuth::Client->new(
 		'client_id', { foo => 'client_secret' }
 		)->scope(
                 'calendar.readonly' 
 		)->token_request ;
-is( $t, $test[3], 'token_request override' ) ;
+ok( linkcompare( $t, $test[3] ), 'token_request override' ) ;
 
 is( ref $token, 'Google::OAuth', 'Test token found' ) ;
 is( $Google::OAuth::Config::test{grantcode}, 
@@ -132,7 +138,7 @@ is( $Google::OAuth::Config::test{grantcode},
 		'Grant Code found' ) ;
 
 my $event = CGI::Simple->new( $item )->query_string ;
-is( $event, $test[4], 'CGI::Simple object' ) ;
+ok( linkcompare( $event, $test[4] ), 'CGI::Simple object' ) ;
 
 my $tqis = 'http://www.tqis.com/pen/GoogleAuth/test.htm' ;
 
@@ -176,6 +182,11 @@ $reponse = $token->response( POST => $tqis, $event ) ;
 is( $token->response( GET => $tqis )->code, 200, 'token response GET' ) ;
 
 is( length( $json ), 987, 'json scalar found' ) ;
+
+my $google = Google::OAuth->get_token( 'redirect_uri', 
+			{ code => $Google::OAuth::Config::test{grantcode} },
+			{ grant_type => 'authorization_code' } ) ;
+ok( ref $google, ref $google? 'get_token': $google || 'no output' ) ;
 
 my $grant = Google::OAuth->grant_code( 
 		$Google::OAuth::Config::test{grantcode} ) ; 

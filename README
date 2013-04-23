@@ -1,4 +1,4 @@
-Google-OAuth version 0.01
+Google-OAuth version 0.02
 =========================
 
 Google::OAuth manages Google's access tokens, and creates HTTP::Request
@@ -27,8 +27,6 @@ This module requires these other modules and libraries:
 		File::Copy
 
 COPYRIGHT AND LICENCE
-
-Put the correct copyright and licence information here.
 
 Copyright (C) 2013 by Jim Schueler
 

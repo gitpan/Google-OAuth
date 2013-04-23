@@ -23,4 +23,4 @@ requires:
   JSON::Parse: 0.07
   LWP::UserAgent: 5.829
   NoSQL::PL2SQL: 1.2
-version: 0.01
+version: 0.02
