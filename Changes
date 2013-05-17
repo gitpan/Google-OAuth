@@ -6,3 +6,11 @@ Revision history for Perl extension Google::OAuth.
 
 0.02  Tue Apr 23 08:54:45 EDT 2013
 	- changes to t/Google-OAuth.t
+
+0.03  Fri May 17 15:28:40 EDT 2013
+	- typos, etc, in the documentation
+	- use JSON::from_json instead of JSON::Parse
+	- CGI::Simple fails in mod_perl
+	- Added scopes{drive}
+	- Added optional argument to Google::OAuth::Request methods
+	- Added Google::OAuth::Headers for customized headers

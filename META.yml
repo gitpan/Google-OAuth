@@ -18,9 +18,8 @@ no_index:
     - t
     - inc
 requires:
-  CGI::Simple: 1.113
   File::Copy: 2.13
-  JSON::Parse: 0.07
+  JSON: 2.57
   LWP::UserAgent: 5.829
-  NoSQL::PL2SQL: 1.2
-version: 0.02
+  NoSQL::PL2SQL: 1.21
+version: 0.03

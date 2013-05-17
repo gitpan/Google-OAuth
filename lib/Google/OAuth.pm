@@ -2,8 +2,7 @@ package Google::OAuth ;
 use base NoSQL::PL2SQL ;
 use Google::OAuth::Config ;
 use LWP::UserAgent ;
-use CGI::Simple ;
-use JSON::Parse ;
+use JSON ;
 
 use 5.008009;
 use strict;
@@ -27,7 +26,7 @@ our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } ) ;
 
 our @EXPORT = qw();
 
-our $VERSION = '0.02';
+our $VERSION = '0.03';
 
 
 # Preloaded methods go here.
@@ -151,7 +150,7 @@ our %EXPORT_TAGS = ( 'all' => [ qw() ] );
 
 our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } ) ;
 
-our @EXPORT = qw( json_to_perl );
+our @EXPORT = qw() ;
 
 our $VERSION = '0.01';
 
@@ -181,6 +180,8 @@ my %scopes = (
 			=> 'https://www.googleapis.com/auth/calendar.readonly',
 	'drive.readonly' 
 			=> 'https://www.googleapis.com/auth/drive.readonly',
+	'drive' 
+			=> 'https://www.googleapis.com/auth/drive',
         ) ;
 
 sub new {
@@ -220,7 +221,7 @@ sub token_request {
 	my $kurl = shift ;
 	$kurl ||= 'oauth' ;
 	return join '?', $google{$kurl}, 
-			CGI::Simple->new( $args )->query_string ;
+			Google::OAuth::CGI->new( $args )->query_string ;
 	}
 
 sub get_token {
@@ -232,7 +233,7 @@ sub get_token {
 
 	my $out = Google::OAuth::Request->content( 
 			POST => $google{token},
-			CGI::Simple->new( $self->{args} )->query_string
+			Google::OAuth::CGI->new( $self->{args} )->query_string
 			) ;
 
 	return $out unless ref $out ;
@@ -243,14 +244,6 @@ sub get_token {
 sub expired {
 	my $self = shift ;
 	return $self->{requested} +$self->{expires_in} < time ;
-	}
-
-## not a method
-sub json_to_perl {
-	my $json = shift ;
-
-	$json =~ s/ (true|false)/ "$1"/sg ;
-	return JSON::Parse::json_to_perl( $json ) ;
 	}
 
 
@@ -265,9 +258,11 @@ sub request {
 	my $method = shift ;
 	my $uri = shift ;
 
-	my @hh = $self->headers( $method ) ;
-	push @hh, 'Content-Length' => length $_[0] if $method eq 'POST' ;
-	my @args = ( \@hh, @_ ) ;
+	my %hh = $self->headers( $method ) ;
+	$hh{'Content-Type'} = shift @_ if @_ > 1 ;
+	$hh{'Content-Length'} = length $_[0] if $method eq 'POST' ;
+
+	my @args = grep defined $_, ( [ %hh ], @_ ) ;
 	return new HTTP::Request( $method, $uri, @args ) ;
 	}
 
@@ -279,7 +274,7 @@ sub response {
 sub content {
 	my $content = response( @_ )->content ;
 	return $content unless $content =~ /^{/s ;
-	return Google::OAuth::Client::json_to_perl( $content ) ;
+	return JSON::from_json( $content ) ;
 	}
 
 sub headers {
@@ -292,6 +287,50 @@ sub headers {
 		'Content-Type' => $content_type{$method},
 		) ;
 	}
+
+
+## stupid CGI::Simple fails on mod_perl
+## replace with a published distro
+package Google::OAuth::CGI ;
+
+sub new {
+	my $package = shift ;
+	my $source = shift ;
+	return bless { source => $source }, $package ;
+	}
+
+sub encode {
+	shift @_ if $_[0] eq __PACKAGE__ ;
+	my $text = shift ;
+	$text =~ s|([^_0-9A-Za-z\. ])|sprintf "%%%02X", ord($1)|seg ;
+	$text =~ s/ /+/g ;
+	return $text ;
+	}
+
+sub args {
+	my ( $key, $value ) = @_ ;
+	$value ||= '' ;
+	return join '=', $key, encode( $value ) unless ref $value ;
+
+	if ( ref $value eq 'ARRAY' ) {}
+	elsif ( grep ref $value eq $_, qw( HASH SCALAR ) ) {
+		return '' ;
+		}
+	elsif ( $value->isa('ARRAY') ) {}
+	else {
+		return '' ;
+		}
+
+	return join '&', map { join '=', $key, encode( $_ ) } @$value ;
+	}
+
+sub query_string {
+	my $self = shift ;
+	my $source = $self->{source} ;
+
+	return join '&', map { args( $_, $source->{$_} ) } keys %$source ;
+	}
+
 
 1;
 __END__
@@ -321,7 +360,7 @@ Google::OAuth - Maintains a database for Google Access Tokens
   $url = sprintf 'https://www.googleapis.com'
 		.'/calendar/v3/calendars/%s/events', $token->{emailkey} ;
   $token->content( POST => $url, 
-		CGI::Simple->new( \%event )->query_string ) ;
+		Google::OAuth::CGI->new( \%event )->query_string ) ;
 
 
 =head1 DESCRIPTION
@@ -379,7 +418,7 @@ values:
 
 =item 2.  A I<Client Secret>
 
-=item 3.  One of more I<Redirect URIs>
+=item 3.  One or more I<Redirect URIs>
 
 =back 8
 
@@ -444,15 +483,15 @@ before this package is ready to use:
 
 =over 8
 
-=item 1.  perl -MGoogle::OAuth::Install config configfile
+=item 1.  perl -MGoogle::OAuth::Install -e config configfile
 
-=item 2.  perl -MGoogle::OAuth::Install settings configfile
+=item 2.  perl -MGoogle::OAuth::Install -e settings configfile
 
-=item 3.  perl -MGoogle::OAuth::Install grantcode configfile | mail
+=item 3.  perl -MGoogle::OAuth::Install -e grantcode configfile | mail
 
-=item 4.  perl -MGoogle::OAuth::Install test configfile
+=item 4.  perl -MGoogle::OAuth::Install -e test configfile
 
-=item 5.  perl -MGoogle::OAuth::Install install configfile
+=item 5.  perl -MGoogle::OAuth::Install -e install configfile
 
 =back 8
 
@@ -480,8 +519,8 @@ on other users' accounts.
 
 =head1 CREATING TOKENS
 
-Most likely, your API tests wil fail.  By default Google's tokens do not allow 
-data access without explicitly defining scope. The token created during
+Most likely, your API tests will fail.  By default Google's tokens do not 
+allow data access without explicitly defining scope. The token created during
 installation is only capable of reading your calendar data.  For additional 
 access, you'll need to generate a new token.
 
@@ -571,10 +610,10 @@ this sequence (such as tailing the server log).
     use Google::OAuth ;
     ## SECURE INSTALLATION overrides are loaded here
 
-    $token = Google::OAuth->grant_code( $query{grantcode} ) ;
+    $token = Google::OAuth->grant_code( $query{code} ) ;
 
     ## Preferred method
-    %token = %{ Google::OAuth->grant_code( $query{grantcode} ) } ;
+    %token = %{ Google::OAuth->grant_code( $query{code} ) } ;
 
 The C<grant_code()> method performs the following tasks:
 
@@ -813,11 +852,6 @@ I<Access Tokens> are valid for only a short period of time.
 C<< $token->expired() >> estimates the expiration time based on the
 I<requested> and I<expires_in> token properties.
 
-=head3 json_to_perl()
-
-C<json_to_perl()> overrides C<JSON::Parse>.  Apparently, C<JSON::Parse>
-chokes on Google JSON's boolean values.
-
 =head2 Google::OAuth::Request
 
 C<Google::OAuth::Request> contains methods that generate or use an 
@@ -832,9 +866,17 @@ constructed, in part, using token data.
 C<< Google::OAuth::Request->request >> creates an L<HTTP::Request> object 
 whose default headers are compatible with Google.
 
-C<request()> takes two or three arguments:  A string representing an HTTP
-method (GET, POST, etc.), a URL, and an optional string representing POST 
-data.  This internal method is available for debugging.
+C<request()> takes two, three or four arguments:  A string representing an
+HTTP method (GET, POST, etc.), a URL, and an optional string representing
+POST data.  To override the default "Content-Type", the third argument should 
+reflect this header value.
+
+  $r = Google::OAuth::Request->request( GET => $url ) ;
+  $r = Google::OAuth::Request->request( POST => $url, $content ) ;
+  $r = Google::OAuth::Request->request( POST => $url, $type, $content ) ;
+  $r = Google::OAuth::Request->request( GET => $url, $type, undef ) ;
+
+This internal method is available for debugging.
 
 =head3 response()
 
@@ -856,7 +898,7 @@ representation of the HTTP response.
 
 	## Don't use this statement in production.  Why not?
 	print "invalid JSON\n" if $token->content( @args ) 
-			== $token->response( @args )->content ;
+			eq $token->response( @args )->content ;
 
 	## prints raw JSON data
 	print $token->response( @args )->content ;
@@ -867,6 +909,32 @@ helpful for debugging.
 =head3 headers()
 
 The C<headers()> method returns default headers compatible with Google.
+
+
+=head2 Google::OAuth::Headers
+
+C<Google::OAuth::Headers> is a trivial subclass for C<Google::OAuth::Request>.
+Originally intended for testing, this class is currently unused but may be 
+useful for modifying request headers.  
+
+  $o = Google::OAuth::Headers->new( $token 
+		)->add( %header-nvps 
+		)->content( GET => $url ) ;
+
+=head3 new()
+
+The object uses a token and includes authentication in the resulting headers.  
+Pass the token as an argument to this constructor.
+
+=head3 add()
+
+Pass any customer headers to the C<add()> method.  C<add()> returns its calling
+object for inline use.
+
+=head3 headers()
+
+The overridden C<headers()> method returns the same header values as 
+C<Google::OAuth::headers()> in addition to those specified by C<add()>.
 
 
 =head2 Google::OAuth::Install
@@ -908,7 +976,7 @@ The easiest would be a simple launch script as follows:
 
   $dsn = define_a_dsn() ;
 
-  Google::OAuth::setclient( 
+  Google::OAuth->setclient( 
 		client_id => '...',
 		client_secret => '...',
 		redirect_uri => '...',
@@ -968,15 +1036,15 @@ Now, perform the installation using these slightly modified steps:
 
 =over 8
 
-=item 1.  perl -MGoogle::OAuth::Install -Mlocal config configfile
+=item 1.  perl -MGoogle::OAuth::Install -Mlocal -e config configfile
 
-=item 2.  perl -MGoogle::OAuth::Install -Mlocal settings configfile
+=item 2.  perl -MGoogle::OAuth::Install -Mlocal -e settings configfile
 
-=item 3.  perl -MGoogle::OAuth::Install -Mlocal grantcode configfile | mail
+=item 3.  perl -MGoogle::OAuth::Install -Mlocal -e grantcode configfile | mail
 
-=item 4.  perl -MGoogle::OAuth::Install -Mlocal test configfile
+=item 4.  perl -MGoogle::OAuth::Install -Mlocal -e test configfile
 
-=item 5.  perl -MGoogle::OAuth::Install -Mlocal install configfile
+=item 5.  perl -MGoogle::OAuth::Install -Mlocal -e install configfile
 
 =back 8
 
@@ -986,7 +1054,7 @@ reference.
 
 =head1 EXPORT
 
-C<Google::OAuth::Client::json_to_perl> is exported.
+none
 
 =head1 SEE ALSO
 
@@ -1002,7 +1070,7 @@ There is a page on my developer site to discuss Google::OAuth
 
 =over 8
 
-=item  http://pl2sql.tqis.com/GoogleOAuth
+=item  http://pl2sql.tqis.com/pl2sql/GoogleOAuth/
 
 =back 8
 

@@ -1,4 +1,4 @@
-Google-OAuth version 0.02
+Google-OAuth version 0.03
 =========================
 
 Google::OAuth manages Google's access tokens, and creates HTTP::Request
@@ -22,9 +22,14 @@ This module requires these other modules and libraries:
 
 		NoSQL::PL2SQL
 		LWP::UserAgent
-		CGI::Simple
-		JSON::Parse
 		File::Copy
+		JSON
+
+DOCUMENTATION
+
+Online documentation available at CPAN:
+
+  http://search.cpan.org/~tqisjim/Google-OAuth-0.03/lib/Google/OAuth.pm
 
 COPYRIGHT AND LICENCE
 

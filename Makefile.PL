@@ -7,10 +7,9 @@ WriteMakefile(
     VERSION_FROM      => 'lib/Google/OAuth.pm', # finds $VERSION
     PREREQ_PM         => {
 		File::Copy => 2.13,
-		NoSQL::PL2SQL => 1.20,
+		NoSQL::PL2SQL => 1.21,
 		LWP::UserAgent => 5.829,
-		CGI::Simple => 1.113,
-		JSON::Parse => 0.07,
+		JSON => 2.57,
 		}, # e.g., Module::Name => 1.1
     ($] >= 5.005 ?     ## Add these new keywords supported since 5.005
       (ABSTRACT_FROM  => 'lib/Google/OAuth.pm', # retrieve abstract from module

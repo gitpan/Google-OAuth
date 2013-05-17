@@ -5,14 +5,13 @@
 
 # change 'tests => 1' to 'tests => last_test_to_print';
 
-use Test::More tests => 40 ;
+use Test::More tests => 37 ;
 BEGIN { 
 	use_ok('Google::OAuth') ;
 	use_ok('Google::OAuth::Install') ;
 	use_ok('Google::OAuth::Config') ;
 	use_ok('LWP::UserAgent') ;
-	use_ok('JSON::Parse') ;
-	use_ok('CGI::Simple') ;
+	use_ok('JSON') ;
 	use_ok('NoSQL::PL2SQL') ;
 	use_ok('NoSQL::PL2SQL::DBI') ;
 	};
@@ -137,7 +136,7 @@ is( $Google::OAuth::Config::test{grantcode},
 		'1/fk7qwDysHKcwfa2S8ZKWTv2-nwTfxpPva3dzmujc_gQ', 
 		'Grant Code found' ) ;
 
-my $event = CGI::Simple->new( $item )->query_string ;
+my $event = Google::OAuth::CGI->new( $item )->query_string ;
 ok( linkcompare( $event, $test[4] ), 'CGI::Simple object' ) ;
 
 my $tqis = 'http://www.tqis.com/pen/GoogleAuth/test.htm' ;
@@ -206,11 +205,5 @@ is( $access->{error}, 'invalid_client', 'access token error' ) ;
 is( scalar keys %$access, 2, 'access token keys' ) ;
 map { delete $access->{$_} } qw( requested error ) ;
 is( scalar keys %$access, 0, 'access token elements' ) ;
-
-
-import Google::OAuth::Client ;
-my $ojson = json_to_perl( $json ) ;
-is( ref $ojson, 'HASH', 'json_to_perl' ) ;
-is( scalar @{ $ojson->{items} }, 2, 'json_to_perl elements' ) ;
 
 1
