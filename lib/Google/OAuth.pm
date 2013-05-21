@@ -26,7 +26,7 @@ our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } ) ;
 
 our @EXPORT = qw();
 
-our $VERSION = '0.03';
+our $VERSION = '0.04';
 
 
 # Preloaded methods go here.
@@ -34,6 +34,7 @@ our $VERSION = '0.03';
 my $duplicate = sub {
 	my ( $emailkey, $errorcode, $perldata, $zero, $obj, $errorstring ) 
 			= @_ ;
+
 	my $package = ref $obj ;
 	my $u = $package->SQLObject( $emailkey ) ;
 	my %keys = map { $_ => 1 } keys %$u, keys %$obj ;
@@ -52,12 +53,20 @@ sub SQLClone {
 	return bless NoSQL::PL2SQL::SQLClone( $self ), $package ;
 	}
 
+sub classID {
+	return 0 ;
+	}
+
+sub grant_type {
+	return 'refresh_token' ;
+	}
+
 sub SQLObject {
 	my $package = shift ;
 	my $email = shift ;
 	NoSQL::PL2SQL::SQLError( $email, 
 			DuplicateObject => $duplicate ) ;
-	my @args = ( $email, $package->dsn, 0 ) ;
+	my @args = ( $email, $package->dsn, $package->classID ) ;
 
 	push @args, bless $_[0], $package if @_ ;
 	my $out = NoSQL::PL2SQL::SQLObject( @args ) ;
@@ -79,7 +88,9 @@ sub token_list {
 	my $package = shift ;
 
 	return map { $_->{objecttype} } $package->dsn->fetch( 
-			[ reftype => 'perldata', 1 ], [ objectid => 0 ] ) ;
+			[ reftype => 'perldata', 1 ], 
+			[ objectid => $package->classID ] 
+			) ;
 	}
 
 sub token {
@@ -89,7 +100,7 @@ sub token {
 	my $object = $self ;
 	$self ||= $package->SQLObject( @_ ) ;
 
-	my $rr = 'refresh_token' ;
+	my $rr = $package->grant_type ;
 	my $token = $package->get_token( 
 			{ $rr => $self->{$rr} }, 
 			{ grant_type => $rr } 
@@ -187,15 +198,16 @@ my %scopes = (
 sub new {
 	my $package = shift ;
 	my $self = {} ;
-	$self->{args} = $package->queryargs( @_ ) ;
+	$self->{args} = $package->queryargs( @_ ) if @_ ;
 	return bless $self, $package ;
 	}
 
 sub scope {
 	shift @_ if $_[0] eq __PACKAGE__ ;
 	my $self = ref $_[0] eq __PACKAGE__? shift @_: undef ;
+	my %args = map { $_ => 1 } ( @_, 'calendar.readonly' ) ;
 
-	my $scope = join ' ', map { $scopes{$_} } @_ ;
+	my $scope = join ' ', map { $scopes{$_} } keys %args ;
 	return $scope unless $self ;
 
 	$self->{scope} = $scope ;
@@ -203,24 +215,23 @@ sub scope {
 	}
 
 sub queryargs {
-	shift @_ if $_[0] eq __PACKAGE__ || ref $_[0] eq __PACKAGE__ ;
+	my $package = shift ;
 	my %out = map { ref $_? %$_: ( $_ => $client{$_} ) } @_ ; 
 	return \%out ;
 	}
 
 sub token_request {
 	my $self = shift ;
-	my $args = $self->{args} ;
-	$args = queryargs( 'client_id', 'redirect_uri',
+	my $args = $self->{args} || $self->queryargs( 
+			'client_id', 'redirect_uri',
 			{ response_type => 'code' },
 			{ approval_prompt => 'force' },
 			{ access_type => 'offline' }
-			) unless %$args ;
+			) ;
 	$args->{scope} = $self->{scope} if $self->{scope} ;
 	
-	my $kurl = shift ;
-	$kurl ||= 'oauth' ;
-	return join '?', $google{$kurl}, 
+	my $kurl = @_? shift @_: 'oauth' ;
+	return join '?', $google{$kurl} || $kurl, 
 			Google::OAuth::CGI->new( $args )->query_string ;
 	}
 
@@ -255,24 +266,26 @@ $content_type{GET} = 'application/http' ;
 
 sub request {
 	my $self = shift ;
-	my $method = shift ;
-	my $uri = shift ;
+	my $method = @_ > 1? shift @_: 'GET' ;
+	my $url = shift ;
 
 	my %hh = $self->headers( $method ) ;
 	$hh{'Content-Type'} = shift @_ if @_ > 1 ;
 	$hh{'Content-Length'} = length $_[0] if $method eq 'POST' ;
 
 	my @args = grep defined $_, ( [ %hh ], @_ ) ;
-	return new HTTP::Request( $method, $uri, @args ) ;
+	return new HTTP::Request( $method, $url, @args ) ;
 	}
 
 sub response {
-	my $r = request( @_ ) ;
+	my $self = shift ;
+	my $r = $self->request( @_ ) ;
 	return LWP::UserAgent->new->request( $r ) ;
 	}
 
 sub content {
-	my $content = response( @_ )->content ;
+	my $self = shift ;
+	my $content = $self->response( @_ )->content ;
 	return $content unless $content =~ /^{/s ;
 	return JSON::from_json( $content ) ;
 	}
@@ -571,6 +584,8 @@ in the next revision:
 
 =item I<drive.readonly>
 
+=item I<drive>
+
 =back 8
 
 The C<token_request()> method output is a legal, functional URL.  The 
@@ -767,6 +782,28 @@ to add the I<Access Token> to the HTTP::Request headers.
 C<< $token->emailkey() >> queries the Google Calendar account data and 
 returns the account ID.
 
+=head3 classID()
+
+C<< Google::OAuth->classID >> returns a constant integer that must be 
+overridden by subclasses.  This constant satisfies the key requirements
+of L<NoSQL::PL2SQL> objects: a string and integer.  The string
+component contains an email address, so the class must be represented 
+by an integer constant.  Consequently, multiple tokens may be keyed by 
+the same email address if they are accessed using subclasses with different
+I<classID> values.
+
+=head3 grant_type()
+
+C<< Google::OAuth->grant_type >> returns a string constant to satisfy two 
+different API's:
+
+=over 8
+
+=item google => refresh_token
+
+=item facebook => fb_exchange_token
+
+=back 8
 
 =head2 Google::OAuth::Client
 

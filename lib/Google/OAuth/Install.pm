@@ -287,6 +287,29 @@ $test{grantcode} = '' ;
 #                                                                             #
 ###############################################################################
 
+###############################################################################
+#                                                                             #
+#  Facebook OAUTH                                                             #
+#                                                                             #
+#  Conceptually, Facebook OAUTH is similar, although the implementation is    #
+#  much simpler.  So most of the same methods can be applied for Facebook.    #
+#  To utilize the overlapping functionality, as well as providing a token     #
+#  persistence solution, a sample Facebook subclass is included in this       #
+#  distro.                                                                    #
+#                                                                             #
+#  One major difference is that Facebook uses only one token.  This token     #
+#  can be renewed indefinitely unless allowed to expire.  After expiration,   #
+#  however, the entire token request process must be repeated.                #
+#                                                                             #
+###############################################################################
+
+my %facebook ;
+
+$facebook{client_id} = '' ;
+$facebook{client_secret} = '' ;
+$facebook{redirect_uri} = '' ;
+
+
 ############################# END OF INSTRUCTIONS #############################
 
 BEGIN {
@@ -301,11 +324,15 @@ BEGIN {
 	our %EXPORT_TAGS = ( 'all' => [ qw() ] );
 	our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } ) ;
 	our @EXPORT = qw() ;
-	our $VERSION = '1.00';
+	our $VERSION = '1.01';
 	}
 
 sub setclient {
 	return %client ;
+	}
+
+sub facebookclient {
+	return %facebook ;
 	}
 
 1;

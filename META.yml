@@ -22,4 +22,4 @@ requires:
   JSON: 2.57
   LWP::UserAgent: 5.829
   NoSQL::PL2SQL: 1.21
-version: 0.03
+version: 0.04

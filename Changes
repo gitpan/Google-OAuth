@@ -14,3 +14,11 @@ Revision history for Perl extension Google::OAuth.
 	- Added scopes{drive}
 	- Added optional argument to Google::OAuth::Request methods
 	- Added Google::OAuth::Headers for customized headers
+
+0.04  Mon May 20 14:50:18 EDT 2013
+	- Added provisions for Facebook OAuth to Install.pm
+	- Added classID() method returns constant integer
+	- Added grant_type() method returns constant string
+	- scope() return always includes 'calendar.readonly' value
+	- Some method calls are now explicitly called using a package
+	- Added sample Facebook::OAuth
