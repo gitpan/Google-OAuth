@@ -8,7 +8,8 @@ WriteMakefile(
     PREREQ_PM         => {
 		File::Copy => 2.13,
 		NoSQL::PL2SQL => 1.21,
-		LWP::UserAgent => 5.829,
+		LWP => 5.830,
+		LWP::Protocol::https => 0,
 		JSON => 2.57,
 		}, # e.g., Module::Name => 1.1
     ($] >= 5.005 ?     ## Add these new keywords supported since 5.005

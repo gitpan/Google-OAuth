@@ -22,3 +22,7 @@ Revision history for Perl extension Google::OAuth.
 	- scope() return always includes 'calendar.readonly' value
 	- Some method calls are now explicitly called using a package
 	- Added sample Facebook::OAuth
+
+0.05  Sat Jun  8 19:43:38 EDT 2013
+	- Documentation changes
+	- Added LWP::Protocol::https prerequisite

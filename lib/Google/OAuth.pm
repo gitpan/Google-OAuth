@@ -26,7 +26,7 @@ our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } ) ;
 
 our @EXPORT = qw();
 
-our $VERSION = '0.04';
+our $VERSION = '0.05';
 
 
 # Preloaded methods go here.
@@ -903,11 +903,12 @@ constructed, in part, using token data.
 C<< Google::OAuth::Request->request >> creates an L<HTTP::Request> object 
 whose default headers are compatible with Google.
 
-C<request()> takes two, three or four arguments:  A string representing an
-HTTP method (GET, POST, etc.), a URL, and an optional string representing
+C<request()> takes one, two, three or four arguments:  A string representing
+an HTTP method (GET, POST, etc.), a URL, and an optional string representing
 POST data.  To override the default "Content-Type", the third argument should 
 reflect this header value.
 
+  $r = Google::OAuth::Request->request( $url ) ;	## Default: GET
   $r = Google::OAuth::Request->request( GET => $url ) ;
   $r = Google::OAuth::Request->request( POST => $url, $content ) ;
   $r = Google::OAuth::Request->request( POST => $url, $type, $content ) ;
@@ -955,7 +956,7 @@ Originally intended for testing, this class is currently unused but may be
 useful for modifying request headers.  
 
   $o = Google::OAuth::Headers->new( $token 
-		)->add( %header-nvps 
+		)->add( %headernvps 
 		)->content( GET => $url ) ;
 
 =head3 new()
@@ -965,7 +966,7 @@ Pass the token as an argument to this constructor.
 
 =head3 add()
 
-Pass any customer headers to the C<add()> method.  C<add()> returns its calling
+Pass any custom headers to the C<add()> method.  C<add()> returns its calling
 object for inline use.
 
 =head3 headers()

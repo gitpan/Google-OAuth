@@ -20,6 +20,7 @@ no_index:
 requires:
   File::Copy: 2.13
   JSON: 2.57
-  LWP::UserAgent: 5.829
+  LWP: 5.83
+  LWP::Protocol::https: 0
   NoSQL::PL2SQL: 1.21
-version: 0.04
+version: 0.05
